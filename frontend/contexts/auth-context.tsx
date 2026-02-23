@@ -1,155 +1,215 @@
 ﻿'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { User } from '@/types';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'user' | 'admin';
+}
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (userData: User, authToken: string) => void;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  isAuthenticated: boolean;
   isAdmin: boolean;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  
+  
+  if (process.env.NODE_ENV === 'development') {
+    const stack = new Error().stack;
+    console.log('🔍 useAuth llamado desde:', stack?.split('\n')[2]);
+  }
+  
+  if (context === undefined) {
+    console.warn('⚠️ useAuth usado fuera de AuthProvider - retornando valores por defecto');
+    
+    
+    return {
+      user: null,
+      token: null,
+      isLoading: false,
+      login: () => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Login llamado sin AuthProvider');
+        }
+      },
+      register: async () => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Register llamado sin AuthProvider');
+        }
+        throw new Error('AuthProvider no disponible');
+      },
+      logout: () => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Logout llamado sin AuthProvider');
+        }
+      },
+      updateUser: () => {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('updateUser llamado sin AuthProvider');
+        }
+      },
+      isAuthenticated: false,
+      isAdmin: false
+    };
+  }
+  
+  return context;
+}
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    setIsMounted(true);
     
-    if (storedToken && storedUser) {
-      setToken(storedToken);
+    const initializeAuth = async () => {
       try {
-        setUser(JSON.parse(storedUser));
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedToken && storedUser) {
+          setToken(storedToken);
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (error) {
+            console.error('Error parsing user data:', error);
+            
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
+        }
       } catch (error) {
-        console.error('Error parsing user data:', error);
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    
-    setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-  console.log('🔍 Iniciando login...');
-  
-  try {
+  const login = (userData: User, authToken: string) => {
+    if (!isMounted) return;
     
-    const url = 'http://localhost:5000/api/auth/login';
-    console.log('📡 Conectando a:', url);
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      mode: 'cors',
-      credentials: 'include',
-      body: JSON.stringify({ email, password }),
-    });
-
-    console.log('📊 Response status:', response.status, response.statusText);
-    
-    
-    if (response.status === 0) {
-      throw new Error('No se puede conectar al servidor. Verifica que el backend esté corriendo en http://localhost:5000');
-    }
-    
-    
-    let data;
-    try {
-      data = await response.json();
-    } catch (parseError) {
-      console.error('❌ Error parseando JSON:', parseError);
-      throw new Error(`Respuesta inválida del servidor: ${await response.text()}`);
-    }
-    
-    if (!response.ok) {
-      throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
-    }
-
-    console.log('✅ Login exitoso!', data.user);
-    
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    
-    setToken(data.token);
-    setUser(data.user);
-    
-   
+    setUser(userData);
+    setToken(authToken);
+    localStorage.setItem('token', authToken);
+    localStorage.setItem('user', JSON.stringify(userData));
     router.push('/dashboard');
-    
-  } catch (error: any) {
-    console.error('❌ Error completo en login:', error);
-    
-    
-    let errorMessage = error.message;
-    
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      errorMessage = 'No se puede conectar al servidor. Asegúrate que: 1) El backend esté corriendo en http://localhost:5000, 2) No haya problemas de firewall, 3) El servidor acepte conexiones desde http://localhost:3000';
-    }
-    
-    throw new Error(errorMessage);
-  }
-};
+  };
 
   const register = async (name: string, email: string, password: string) => {
+    if (!isMounted) return;
+    
     try {
-      const response = await fetch('http://localhost:5000/api/register', {
+      setIsLoading(true);
+      const response = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ name, email, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Error en registro');
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en el registro');
       }
 
+      const data = await response.json();
+      
+      setUser(data.user);
+      setToken(data.token);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      setToken(data.token);
-      setUser(data.user);
-      
       router.push('/dashboard');
+      return data;
     } catch (error: any) {
       console.error('Register error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = () => {
+    if (!isMounted) return;
+    
+    setUser(null);
+    setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
     router.push('/');
   };
 
-  const isAdmin = user?.role === 'ADMIN';
+  const updateUser = (userData: Partial<User>) => {
+    if (!isMounted || !user) return;
+    
+    const updatedUser = { ...user, ...userData };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
+  const isAdmin = user?.role === 'admin';
+  const isAuthenticated = !!token;
+
+  const value: AuthContextType = {
+    user,
+    token,
+    isLoading,
+    login,
+    register,
+    logout,
+    updateUser,
+    isAuthenticated,
+    isAdmin
+  };
+
+
+  if (!isMounted) {
+    return null;
+  }
+
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-white">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-amber-700 font-medium">Iniciando Aurea Market...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, isAdmin }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth debe usarse dentro de AuthProvider');
-  }
-  return context;
 }

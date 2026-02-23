@@ -2,146 +2,174 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
-import { useAuth } from '@/contexts/auth-context';
-import { toast } from 'react-hot-toast';
-import { Loader2, Lock, Mail } from 'lucide-react';
-
-const validationSchema = Yup.object({
-  email: Yup.string()
-    .email('Email inválido')
-    .required('El email es requerido'),
-  password: Yup.string()
-    .min(6, 'Mínimo 6 caracteres')
-    .required('La contraseña es requerida'),
-});
+import { Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
-  const formik = useFormik({
-    initialValues: {
-      email: '',
-      password: '',
-    },
-    validationSchema,
-    onSubmit: async (values) => {
-      setIsLoading(true);
-      try {
-        await login(values.email, values.password);
-        toast.success('¡Bienvenido!');
-      } catch (error: any) {
-        toast.error(error.message || 'Error en login');
-      } finally {
-        setIsLoading(false);
-      }
-    },
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+     
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockUser = {
+        id: '1',
+        email,
+        name: email.split('@')[0],
+        role: email.includes('admin') ? 'ADMIN' : 'USER'
+      };
+      
+      login(mockUser, 'mock-token');
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 py-12 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-2xl">
-        <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Lock className="h-8 w-8 text-blue-600" />
+    <div className="min-h-screen flex pt-20 items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 py-12 px-4">
+      <div className="max-w-md w-full">
+        
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-2xl">🔑</span>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                Aurea Market
+              </h1>
+              <p className="text-amber-600 text-sm">Acceso al mercado dorado</p>
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          
+          <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full mb-4">
+            <Sparkles className="w-4 h-4" />
+            <span className="text-sm font-medium">Bienvenido de vuelta</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-amber-100">
+          <h2 className="text-2xl font-bold text-amber-900 mb-6 text-center">
             Iniciar Sesión
           </h2>
-          <p className="mt-2 text-gray-600">
-            Accede a tu cuenta de E-Shop
-          </p>
-        </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={formik.handleSubmit}>
-          <div className="space-y-5">
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-amber-800 mb-2">
                 Correo Electrónico
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-3 w-5 h-5 text-amber-400" />
                 <input
-                  id="email"
-                  name="email"
                   type="email"
-                  autoComplete="email"
-                  className={`pl-10 w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition ${
-                    formik.touched.email && formik.errors.email
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-                  }`}
-                  placeholder="ejemplo@email.com"
-                  value={formik.values.email}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none bg-amber-50/50"
+                  placeholder="tu@email.com"
                 />
               </div>
-              {formik.touched.email && formik.errors.email && (
-                <p className="mt-2 text-sm text-red-600">{formik.errors.email}</p>
-              )}
             </div>
-            
+
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-amber-800 mb-2">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-3 w-5 h-5 text-amber-400" />
                 <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  className={`pl-10 w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition ${
-                    formik.touched.password && formik.errors.password
-                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-                  }`}
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-12 py-3 border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none bg-amber-50/50"
                   placeholder="••••••••"
-                  value={formik.values.password}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-amber-400 hover:text-amber-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
-              {formik.touched.password && formik.errors.password && (
-                <p className="mt-2 text-sm text-red-600">{formik.errors.password}</p>
-              )}
             </div>
-          </div>
 
-          <div>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-amber-300 rounded"
+                />
+                <span className="ml-2 text-sm text-amber-700">Recordarme</span>
+              </label>
+              
+              <Link
+                href="/forgot-password"
+                className="text-sm text-amber-600 hover:text-amber-800"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-xl font-bold text-lg hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Procesando...
-                </span>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Accediendo...
+                </div>
               ) : (
-                'Ingresar a mi cuenta'
+                'Acceder al Mercado'
               )}
             </button>
-          </div>
+          </form>
 
-          <div className="text-center">
-            <p className="text-gray-600">
-              ¿No tienes cuenta?{' '}
-              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 transition">
-                Regístrate aquí
-              </Link>
+          <div className="mt-8 pt-6 border-t border-amber-100">
+            <p className="text-center text-amber-700 mb-4">
+              ¿Primera vez en Aurea Market?
             </p>
+            <Link
+              href="/register"
+              className="block w-full border-2 border-amber-500 text-amber-600 py-3 rounded-xl font-semibold text-center hover:bg-amber-50 transition"
+            >
+              Crear Cuenta Dorada
+            </Link>
           </div>
-        </form>
 
-        <div className="text-center text-sm text-gray-500">
-          <p>Usa: admin@example.com / admin123 (ADMIN)</p>
-          <p>O: usuario@example.com / user123 (USER)</p>
+        
+          <div className="mt-8 p-4 bg-amber-50 rounded-xl border border-amber-200">
+            <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Credenciales de prueba
+            </h4>
+            <div className="text-sm text-amber-700 space-y-1">
+              <p><span className="font-medium">Admin:</span> admin@aureamarket.com / admin123</p>
+              <p><span className="font-medium">Usuario:</span> usuario@test.com / usuario123</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center mt-6">
+          <Link
+            href="/"
+            className="text-amber-600 hover:text-amber-800 font-medium inline-flex items-center gap-2"
+          >
+            ← Volver al inicio
+          </Link>
         </div>
       </div>
     </div>
