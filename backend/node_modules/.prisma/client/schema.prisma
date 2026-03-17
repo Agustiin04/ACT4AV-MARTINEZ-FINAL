@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // o "mysql" según tu DB
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -16,7 +16,7 @@ model User {
   role      Role     @default(USER)
   cart      Cart?
   orders    Order[]
-  reviews   Review[]    // ← RELACIÓN AÑADIDA
+  reviews   Review[]  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -91,7 +91,7 @@ model Review {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   userId    String
-  user      User     @relation(fields: [userId], references: [id])  // ← YA TIENE SU PAR EN USER
+  user      User     @relation(fields: [userId], references: [id]) 
   rating    Int      @default(5)
   comment   String?
   createdAt DateTime @default(now())

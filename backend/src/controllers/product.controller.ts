@@ -2,19 +2,20 @@ import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { productSchema } from '../schemas/product.schema';
 
-
 export const getAllProducts = async (req: Request, res: Response) => {
   try {
-    const { category, minPrice, maxPrice, search } = req.query;
+    const { categoryId, minPrice, maxPrice, search } = req.query;
     
     const where: any = {};
     
-    if (category) where.category = category as string;
+    if (categoryId) where.categoryId = categoryId as string;
+    
     if (minPrice || maxPrice) {
       where.price = {};
       if (minPrice) where.price.gte = parseFloat(minPrice as string);
       if (maxPrice) where.price.lte = parseFloat(maxPrice as string);
     }
+    
     if (search) {
       where.OR = [
         { name: { contains: search as string, mode: 'insensitive' } },
@@ -24,6 +25,9 @@ export const getAllProducts = async (req: Request, res: Response) => {
     
     const products = await prisma.product.findMany({
       where,
+      include: { 
+        category: true 
+      },
       orderBy: { createdAt: 'desc' }
     });
     
@@ -34,13 +38,15 @@ export const getAllProducts = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getProduct = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
     const product = await prisma.product.findUnique({
-      where: { id }
+      where: { id },
+      include: { 
+        category: true 
+      }
     });
     
     if (!product) {
@@ -49,17 +55,27 @@ export const getProduct = async (req: Request, res: Response) => {
     
     res.json(product);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Error al obtener el producto' });
   }
 };
 
-
 export const createProduct = async (req: Request, res: Response) => {
   try {
     const validatedData = productSchema.parse(req.body);
+    const { categoryId, ...rest } = validatedData;
     
+   
     const product = await prisma.product.create({
-      data: validatedData
+      data: {
+        ...rest,
+        category: {
+          connect: { id: categoryId }
+        }
+      } as any,
+      include: { 
+        category: true 
+      }
     });
     
     res.status(201).json(product);
@@ -67,10 +83,10 @@ export const createProduct = async (req: Request, res: Response) => {
     if (error.name === 'ZodError') {
       return res.status(400).json({ error: error.errors });
     }
+    console.error(error);
     res.status(500).json({ error: 'Error al crear producto' });
   }
 };
-
 
 export const updateProduct = async (req: Request, res: Response) => {
   try {
@@ -85,9 +101,22 @@ export const updateProduct = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
     
+    const { categoryId, ...rest } = validatedData;
+    const data: any = { ...rest };
+    
+    if (categoryId) {
+      data.category = {
+        connect: { id: categoryId }
+      };
+    }
+    
+    
     const product = await prisma.product.update({
       where: { id },
-      data: validatedData
+      data: data as any,
+      include: { 
+        category: true 
+      }
     });
     
     res.json(product);
@@ -95,10 +124,10 @@ export const updateProduct = async (req: Request, res: Response) => {
     if (error.name === 'ZodError') {
       return res.status(400).json({ error: error.errors });
     }
+    console.error(error);
     res.status(500).json({ error: 'Error al actualizar producto' });
   }
 };
-
 
 export const deleteProduct = async (req: Request, res: Response) => {
   try {

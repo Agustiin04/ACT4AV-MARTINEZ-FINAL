@@ -5,6 +5,8 @@ export const productSchema = z.object({
   description: z.string().min(10, 'Descripción muy corta').max(500),
   price: z.number().positive('Precio debe ser positivo'),
   stock: z.number().int().min(0, 'Stock no puede ser negativo'),
-  category: z.string().min(2, 'Categoría muy corta'),
-  image: z.string().url('URL inválida').optional().or(z.literal('')),
+  categoryId: z.string().min(2, 'Categoría muy corta'),
+  image: z.string().url('URL inválida').optional(),
 });
+
+export type ProductInput = z.infer<typeof productSchema>;

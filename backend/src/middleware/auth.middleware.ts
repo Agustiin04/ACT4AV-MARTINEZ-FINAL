@@ -1,49 +1,35 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../utils/prisma';
 import { JWT_SECRET } from '../utils/constants';
 
-export interface AuthRequest extends Request {
-  user?: any;
-}
-
-export const authenticate = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const authenticate = (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(' ')[1];
     
     if (!token) {
-      return res.status(401).json({ error: 'Token no proporcionado' });
+      return res.status(401).json({ error: 'No autorizado' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, role: true, name: true }
-    });
-
-    if (!user) {
-      return res.status(401).json({ error: 'Usuario no encontrado' });
-    }
-
-    req.user = user;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    (req as any).user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Token inválido' });
+    return res.status(401).json({ error: 'Token inválido' });
   }
 };
 
-export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
+export const authorize = (allowedRoles: string | string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    
+    if (!user) {
       return res.status(401).json({ error: 'No autenticado' });
     }
+
+    const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
     
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'No autorizado' });
+    if (!roles.includes(user.role)) {
+      return res.status(403).json({ error: 'No tiene permisos suficientes' });
     }
     
     next();
